@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 from roboflow import Roboflow
 os.environ["TESSDATA_PREFIX"] = "C:/Program Files/Tesseract-OCR/tessdata"
-rf = Roboflow(api_key="4Vkwb5mkP0K6pBH1xQoN")
+rf = Roboflow(api_key=api_key)
 project = rf.workspace().project("license-plate-recognition-rxg4e")
 model = project.version(4).model
 

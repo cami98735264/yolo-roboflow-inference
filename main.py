@@ -1,9 +1,11 @@
 import base64
 from PIL import Image
 import cv2
+import os
+import pytesseract
 import numpy as np
 from roboflow import Roboflow
-
+os.environ["TESSDATA_PREFIX"] = "C:/Program Files/Tesseract-OCR/tessdata"
 rf = Roboflow(api_key="4Vkwb5mkP0K6pBH1xQoN")
 project = rf.workspace().project("license-plate-recognition-rxg4e")
 model = project.version(4).model
@@ -34,8 +36,17 @@ while True:
             start_point = (int(x0), int(y0))
             end_point = (int(x1), int(y1))
             cv2.rectangle(frame, start_point, end_point, (0, 255, 0), 2)
+            ocr_frame = frame[int(y0):int(y1), int(x0):int(x1)]
+            cv2.imwrite("idk.jpg", ocr_frame)
+            gray = cv2.cvtColor(ocr_frame, cv2.COLOR_BGR2GRAY)
+            reduc_noise = cv2.bilateralFilter(gray, 11, 17, 17) 
+            img_filtered = Image.fromarray(reduc_noise)
+            numpy_img = np.asarray(img_filtered)
+            cv2.imwrite("idk.jpg", numpy_img)
+            predicted_result = pytesseract.image_to_string(img_filtered, config ='--oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789')
+            ocred = "".join(predicted_result.split()).replace(":", "").replace("-", "")
+            print(ocred)
 
-    print(results)
 
     # Display the frame
     # Resize cv2 window to 640x480

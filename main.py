@@ -52,7 +52,6 @@ while True:
             ocr_frame = frame[int(y0):int(y1), int(x0):int(x1)]
             temp_img = cv2.imwrite("temp.jpg", ocr_frame)
             results = alpr.recognize_file("./temp.jpg")
-            # write top 10 results inside the results variable: results: [{"plate": "..."}, {}...].. so text var should be like: El top 10 de resultados: 1. ABC123 2. ABC124 3. ABC125
             if results['results']:
                 print(f"Recognized plate: {results['results'][0]['plate']}, with a confidence of {results['results'][0]['confidence']}%")
             

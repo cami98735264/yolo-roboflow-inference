@@ -1,14 +1,27 @@
 import base64
-from PIL import Image
-import cv2
 import os
-import pytesseract
+from dotenv import load_dotenv
+load_dotenv() 
+api_key = os.getenv("API_KEY")
+open_alpr_path = os.getenv("OPEN_ALPR_PATH")
+from PIL import Image
+os.add_dll_directory(open_alpr_path)
+import json
+from openalpr import Alpr
+import cv2
 import numpy as np
 from roboflow import Roboflow
 os.environ["TESSDATA_PREFIX"] = "C:/Program Files/Tesseract-OCR/tessdata"
 rf = Roboflow(api_key="4Vkwb5mkP0K6pBH1xQoN")
 project = rf.workspace().project("license-plate-recognition-rxg4e")
 model = project.version(4).model
+
+
+# Initialize OpenALPR
+alpr = Alpr("us", open_alpr_path + "openalpr.conf", open_alpr_path + "runtime_data")
+if not alpr.is_loaded():
+    print("Error loading OpenALPR")
+    sys.exit(1)
 
 # Open the default camera
 cap = cv2.VideoCapture(0)
@@ -37,15 +50,12 @@ while True:
             end_point = (int(x1), int(y1))
             cv2.rectangle(frame, start_point, end_point, (0, 255, 0), 2)
             ocr_frame = frame[int(y0):int(y1), int(x0):int(x1)]
-            cv2.imwrite("idk.jpg", ocr_frame)
-            gray = cv2.cvtColor(ocr_frame, cv2.COLOR_BGR2GRAY)
-            reduc_noise = cv2.bilateralFilter(gray, 11, 17, 17) 
-            img_filtered = Image.fromarray(reduc_noise)
-            numpy_img = np.asarray(img_filtered)
-            cv2.imwrite("idk.jpg", numpy_img)
-            predicted_result = pytesseract.image_to_string(img_filtered, config ='--oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNÑOPQRSTUVWXYZ0123456789')
-            ocred = "".join(predicted_result.split()).replace(":", "").replace("-", "")
-            print(ocred)
+            temp_img = cv2.imwrite("temp.jpg", ocr_frame)
+            results = alpr.recognize_file("./temp.jpg")
+            # write top 10 results inside the results variable: results: [{"plate": "..."}, {}...].. so text var should be like: El top 10 de resultados: 1. ABC123 2. ABC124 3. ABC125
+            if results['results']:
+                print(f"Recognized plate: {results['results'][0]['plate']}, with a confidence of {results['results'][0]['confidence']}%")
+            
 
 
     # Display the frame

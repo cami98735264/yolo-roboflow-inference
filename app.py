@@ -1,4 +1,3 @@
-from flask import Flask,render_template,Response
 import base64
 import os
 from dotenv import load_dotenv
@@ -17,31 +16,31 @@ rf = Roboflow(api_key=api_key)
 project = rf.workspace().project("license-plate-recognition-rxg4e")
 model = project.version(4).model
 
+
 # Initialize OpenALPR
 alpr = Alpr("us", open_alpr_path + "openalpr.conf", open_alpr_path + "runtime_data")
 if not alpr.is_loaded():
     print("Error loading OpenALPR")
     sys.exit(1)
 
-app=Flask(__name__)
-camera=cv2.VideoCapture(0)
+# Open the default camera
+cap = cv2.VideoCapture(0)
 
-def generate_frames():
-    while True:
-       # Read the frame from the camera
-       ret, frame = camera.read()
-       height, width, channels = frame.shape
-       scale = 640 / max(height, width)
-       frame = cv2.resize(frame, (round(scale * width), round(scale * height)))
-       # Open frame with Image.open()
-       img = Image.fromarray(frame)
-       numpydata = np.asarray(img)
-       if not ret:
+while True:
+    # Read the frame from the camera
+    ret, frame = cap.read()
+    height, width, channels = frame.shape
+    scale = 640 / max(height, width)
+    frame = cv2.resize(frame, (round(scale * width), round(scale * height)))
+    # Open frame with Image.open()
+    img = Image.fromarray(frame)
+    numpydata = np.asarray(img)
+    if not ret:
         print("Unable to capture video")
         break
 
-       results = model.predict(numpydata, confidence=40, overlap=30).json()
-       if results["predictions"]:
+    results = model.predict(numpydata, confidence=40, overlap=30).json()
+    if results["predictions"]:
         for prediction in results["predictions"]:
             x0 = prediction['x'] - prediction['width'] / 2
             x1 = prediction['x'] + prediction['width'] / 2
@@ -55,17 +54,19 @@ def generate_frames():
             results = alpr.recognize_file("./temp.jpg")
             if results['results']:
                 print(f"Recognized plate: {results['results'][0]['plate']}, with a confidence of {results['results'][0]['confidence']}%")
-            ret, buffer = cv2.imencode('.jpg', frame) 
-            jpg_frame = buffer.tobytes()
-
-        yield(b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + jpg_frame + b'\r\n')
+            
 
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+    # Display the frame
+    # Resize cv2 window to 640x480
+    cv2.namedWindow('Camera', cv2.WINDOW_NORMAL)
+    cv2.resize(frame, (640, 480))
+    cv2.imshow('Camera', frame)
 
-@app.route('/video')
-def video():
-    return Response(generate_frames(),mimetype='multipart/x-mixed-replace; boundary=frame')
+    # Break the loop if the 'q' key is pressed
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Release the camera and close the window
+cap.release()
+cv2.destroyAllWindows()
